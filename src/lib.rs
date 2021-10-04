@@ -15,9 +15,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     // TODO: Curr Ver: Space handles all the events
     // TODO: Update Ver: Separate into different MSG
     orders.stream(streams::window_event(Ev::KeyDown, |ev| Msg::Space(ev.unchecked_into())));
-    // TODO: Curr Ver: Msg::Update checks the GameState so that update occures only during GameState::Playing
-    // TODO: Update Ver: Msg::Update gets sent only during GameState::Playing instead of all times
-    orders.stream(streams::interval(100, || Msg::Update));
+    orders.stream(streams::interval(200, || Msg::Update));
     let model = Model { 
         flappy_ferris: flappy_ferris::FlappyFerris::new() 
     };
@@ -53,13 +51,13 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             ev.prevent_default();
             if ev.key().as_str() == "Enter" {
                 match model.flappy_ferris.get_game_state() {
-                    GameState::New => model.flappy_ferris.start_game(),
+                    GameState::Start => model.flappy_ferris.play_game(),
                     GameState::Over => model.flappy_ferris.reset_game(),
                     GameState::Playing => model.flappy_ferris.ferris.jump(),
                 }
             }
         },
-        Msg::Start => model.flappy_ferris.start_game(),
+        Msg::Start => model.flappy_ferris.play_game(),
         Msg::Jump => model.flappy_ferris.ferris.jump(),
         Msg::Update => {
             match model.flappy_ferris.get_game_state() {
@@ -189,40 +187,40 @@ fn view_footer() -> Node<Msg> {
     ]
 }
 
-fn view_new(model: &Model) -> Node<Msg> {
-    section![
-        h1![C!["new-game", "is-medium"],
-            "New Game"
-            ],
-        button!["Play Game", ev(Ev::Click, |_| Msg::Start),]
-    ]
-}
+// fn view_new(model: &Model) -> Node<Msg> {
+//     section![
+//         h1![C!["new-game", "is-medium"],
+//             "New Game"
+//             ],
+//         button!["Play Game", ev(Ev::Click, |_| Msg::Start),]
+//     ]
+// }
 
-fn view_playing(model: &Model) -> Node<Msg> {
-    section![
-        h1![C!["play-game", "is-medium"],
-            "Playing Game"
-        ],
-        div![
-            C!["Flappy Ferris"],
-            "Flappy Ferris",
-            "Dead: ", model.flappy_ferris.ferris.dead as i32,
-            "Y val: ", model.flappy_ferris.ferris.y as i32,
-            "Speed: ", model.flappy_ferris.ferris.speed as i32,
-        ],
-        button!["Update", ev(Ev::Click, |_| Msg::Update),],
-        // ev(Ev::KeyUp, |_| Msg::Jump),
-    ]
-}
+// fn view_playing(model: &Model) -> Node<Msg> {
+//     section![
+//         h1![C!["play-game", "is-medium"],
+//             "Playing Game"
+//         ],
+//         div![
+//             C!["Flappy Ferris"],
+//             "Flappy Ferris",
+//             "Dead: ", model.flappy_ferris.ferris.dead as i32,
+//             "Y val: ", model.flappy_ferris.ferris.y as i32,
+//             "Speed: ", model.flappy_ferris.ferris.speed as i32,
+//         ],
+//         button!["Update", ev(Ev::Click, |_| Msg::Update),],
+//         // ev(Ev::KeyUp, |_| Msg::Jump),
+//     ]
+// }
 
-fn view_dead(model: &Model) -> Node<Msg> {
-    section![
-        h1![C!["end-game", "is-medium"],
-            "Game Over"
-        ],
-        button!["Restart Game", ev(Ev::Click, |_| Msg::Restart),]
-    ]
-}
+// fn view_dead(model: &Model) -> Node<Msg> {
+//     section![
+//         h1![C!["end-game", "is-medium"],
+//             "Game Over"
+//         ],
+//         button!["Restart Game", ev(Ev::Click, |_| Msg::Restart),]
+//     ]
+// }
 
 // ------ ------
 //     Start

@@ -3,16 +3,17 @@ use rand::Rng;
 use serde::Deserialize;
 use std::cmp;
 
-const WIDTH: f64 = 640.0;
-const HEIGHT: f64 = 640.0;
+// const WIDTH: f64 = 640.0;
+const FLY_AREA: f64 = 360.0; // fly_area = top pipe height + bottom pipe height + pipe height (space in btwn)
+const PIPE_HEIGHT: f64 = 90.0;
+const PIPE_WIDTH: f64 = 50.0;
 const JUMP: f64 = -4.5;
 const GRAVITY: f64 = 0.25;
-const PIPE_SPEED: f64 = 8.0;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct FlappyFerris {
     pub ferris: Ferris,
-    pipes: Vec<Pipe>,
+    pipe_manager: PipeManager,
     score: i32,
     time: i32,
     game_state: GameState
@@ -22,7 +23,7 @@ impl FlappyFerris {
     pub fn new() -> FlappyFerris {
         FlappyFerris {
             ferris: Ferris::new(),
-            pipes: Vec::new(),
+            pipe_manager: PipeManager::new(),
             score: 0,
             time: 0,
             game_state: GameState::Start
@@ -34,8 +35,8 @@ impl FlappyFerris {
     }
 
     pub fn reset_game(&mut self) {
-        self.ferris.restart();
-        self.pipes = Vec::new();
+        self.ferris.reset();
+        self.pipe_manager.reset();
         self.score = 0;
         self.time = 0;
         self.game_state = GameState::Start;
@@ -46,7 +47,6 @@ impl FlappyFerris {
     }
     
     // TODO: Update update
-    // update pipe and ferris
     pub fn update(&mut self) -> GameState {
         self.ferris.update();
         if self.ferris.dead {
@@ -54,51 +54,31 @@ impl FlappyFerris {
             return self.game_state;
         }
         
-        if self.time > 10 && self.time % 20 == 0 {
-            self.add_pipes();
+        if self.time > 0 && self.time % 1600 == 0 {
+            self.pipe_manager.update(self.ferris.ferris_box.x);
         }
 
-        // Keep track of indices of pipes that need to be removed
-        let mut to_remove = Vec::new();
+        if self.pipe_manager.pipes.is_empty() {
+            return self.game_state;
+        }
 
-        for i in 0..self.pipes.len() {
-            let pipe: &mut Pipe = self.pipes.get_mut(i).unwrap();
-            pipe.update();
+        // TODO: unsafe; should do a None check
+        let mut curr_pipe = self.pipe_manager.get_first_unpassed().unwrap();
 
-            if !pipe.passed {
-                if pipe.contains(self.ferris) {
-                    self.game_state = GameState::Over;
-                    return self.game_state;
-                }
-
-                if self.ferris.x > pipe.x + pipe.w {
-                    pipe.passed = true;
-                    if pipe.inverted {
-                        self.score += 1;
-                    }
-                }
-            }
-
-            if pipe.x + pipe.w <= 0.0 {
-                to_remove.push(i);       
+        if self.ferris.ferris_box.right() > curr_pipe.top_pipe.left() {
+            if curr_pipe.intersects(&self.ferris.ferris_box) {
+                self.game_state = GameState::Over;
+                return self.game_state;
             }
         }
 
-        while !to_remove.is_empty() {
-            self.pipes.remove(to_remove.pop().unwrap());
+        if self.ferris.ferris_box.left() > curr_pipe.top_pipe.right() {
+            curr_pipe.passed = true;
+            self.score += 1;
         }
-
+        
         self.time += 1;
         self.game_state
-    }
-
-    // TODO: Don't need this
-    pub fn add_pipes(&mut self) {
-        // add og and inverted pipe to the pipes
-        let bottom = Pipe::new();
-        let top = Pipe::inverted_pipe(bottom.h);
-        self.pipes.push(bottom);
-        self.pipes.push(top);
     }
 }
 
@@ -113,6 +93,7 @@ pub enum GameState {
 pub struct Ferris {
     pub ferris_box: Box,
     pub speed: f64,
+    pub dead: bool,
 }
 
 // Skip rotation
@@ -121,13 +102,15 @@ impl Ferris {
         Ferris {
             ferris_box: Box::new(35.0, 25.0, 60.0, 180.0),
             speed: 0.0,
+            dead: false,
         }
     }
 
-    pub fn restart(&mut self) {
+    pub fn reset(&mut self) {
         self.ferris_box.x = 60.0;
         self.ferris_box.y = 180.0;
         self.speed = 0.0;
+        self.dead = false;
     }
 
     pub fn jump(&mut self) {
@@ -139,6 +122,7 @@ impl Ferris {
         self.ferris_box.y += self.speed;
         if self.ferris_box.y < 0.0 {
             self.ferris_box.y = 0.0;
+            self.dead = true;
         }
         if self.ferris_box.y > 360.0 {
             self.ferris_box.y = 360.0;
@@ -148,25 +132,75 @@ impl Ferris {
     }
 }
 
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub struct PipeManager {
+    pub pipes: Vec<Pipe>,
+}
+
+impl PipeManager {
+    pub fn new() -> PipeManager {
+        PipeManager{
+            pipes: Vec::new(),
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.pipes = Vec::new();
+    }
+
+    pub fn update(&mut self, ferris_x: f64) {
+        self.remove_old(ferris_x);
+        self.add_pipe(ferris_x);
+    }
+
+    fn add_pipe(&mut self, ferris_x: f64) {
+        let new_pipe = Pipe::new(ferris_x);
+        self.pipes.push(new_pipe);
+    }
+
+    fn remove_old(&mut self, ferris_x: f64) {
+        self.pipes.retain(|&pipe| !pipe.removable(ferris_x));
+    }
+
+    pub fn get_first_unpassed(&mut self) -> Option<&mut Pipe> {
+        for pipe in self.pipes.iter_mut() {
+            if !pipe.passed {
+                return Some(pipe);
+            }
+        };
+        None
+    }
+}
+
 #[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
 pub struct Pipe {
-    pub upper_box: Box,
-    pub lower_box: Box,
+    pub bot_pipe: Box,
+    pub top_pipe: Box,
     pub passed: bool,
 }
 
 impl Pipe {
-    pub fn new() -> Pipe {
+    // New pipe's x is curr ferris's x + 480 (1.6 secs)
+    pub fn new(ferris_x: f64) -> Pipe {
+        let pipe_x = ferris_x + 480.0;
+        let bot_height = f64::from(thread_rng().gen_range(80, 191));
+        let top_height = FLY_AREA - PIPE_HEIGHT - bot_height;
+        let bot_y = 0.0;
+        let top_y = bot_y + bot_height + PIPE_HEIGHT;
+        
         Pipe {
-            // TODO: Calculate height with randomness and padding
-            upper_box: Box::new(90.0, 50.0, 0.0, 0.0),
-            lower_box: Box::new(90.0, 50.0, 0.0, 0.0),
+            bot_pipe: Box::new(PIPE_WIDTH, bot_height, pipe_x, bot_y),
+            top_pipe: Box::new(PIPE_WIDTH, top_height, pipe_x, top_y),
             passed: false,
         }
     }
 
     pub fn intersects(&self, other: &Box) -> bool {
-        self.upper_box.intersects(other) || self.lower_box.intersects(other)
+        self.top_pipe.intersects(other) || self.bot_pipe.intersects(other)
+    }
+
+    pub fn removable(&self, ferris_x: f64) -> bool {
+        self.bot_pipe.x + 100.0 < ferris_x
     }
 }
 
@@ -187,6 +221,22 @@ impl Box {
             x,
             y,
         }
+    }
+
+    pub fn left(&self) -> f64 {
+        self.x
+    }
+
+    pub fn right(&self) -> f64 {
+        self.x + self.w
+    }
+
+    pub fn bot(&self) -> f64 {
+        self.y
+    }
+
+    pub fn top(&self) -> f64 {
+        self.y + self.h
     }
 
     pub fn intersects(&self, other: &Box) -> bool {
@@ -212,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    fn ferris_jump() {
+    fn test_only_jump() {
         let mut ferris: Ferris = Ferris::new();
         // ferris.update();
         // println!("After 1 update: {:#?}", ferris);
