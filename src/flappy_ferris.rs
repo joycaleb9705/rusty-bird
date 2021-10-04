@@ -5,8 +5,8 @@ use std::cmp;
 
 const WIDTH: f64 = 640.0;
 const HEIGHT: f64 = 640.0;
-const JUMP: f64 = 8.0;
-const GRAVITY: f64 = 0.2;
+const JUMP: f64 = -4.5;
+const GRAVITY: f64 = 0.25;
 const PIPE_SPEED: f64 = 8.0;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -25,11 +25,11 @@ impl FlappyFerris {
             pipes: Vec::new(),
             score: 0,
             time: 0,
-            game_state: GameState::New
+            game_state: GameState::Start
         }
     }
 
-    pub fn start_game(&mut self) {
+    pub fn play_game(&mut self) {
         self.game_state = GameState::Playing;
     }
 
@@ -38,13 +38,14 @@ impl FlappyFerris {
         self.pipes = Vec::new();
         self.score = 0;
         self.time = 0;
-        self.game_state = GameState::New;
+        self.game_state = GameState::Start;
     }
 
     pub fn get_game_state(&self) -> GameState {
         self.game_state
     }
     
+    // TODO: Update update
     // update pipe and ferris
     pub fn update(&mut self) -> GameState {
         self.ferris.update();
@@ -91,6 +92,7 @@ impl FlappyFerris {
         self.game_state
     }
 
+    // TODO: Don't need this
     pub fn add_pipes(&mut self) {
         // add og and inverted pipe to the pipes
         let bottom = Pipe::new();
@@ -102,110 +104,93 @@ impl FlappyFerris {
 
 #[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
 pub enum GameState {
-    New,
+    Start,
     Playing,
-    Over
+    Over,
 }
 
 #[derive(Deserialize, Debug, Copy, Clone)]
 pub struct Ferris {
-    pub w: f64,
-    pub h: f64,
-    pub x: f64,
-    pub y: f64,
+    pub ferris_box: Box,
     pub speed: f64,
-    pub dead: bool,
 }
 
+// Skip rotation
 impl Ferris {
     pub fn new() -> Ferris {
         Ferris {
-            w: 25.0,
-            h: 25.0,
-            x: WIDTH / 2.0, // ferris centered at all time
-            y: HEIGHT / 2.0,
+            ferris_box: Box::new(35.0, 25.0, 60.0, 180.0),
             speed: 0.0,
-            dead: false,
         }
     }
 
     pub fn restart(&mut self) {
-        self.y = HEIGHT / 2.0;
+        self.ferris_box.x = 60.0;
+        self.ferris_box.y = 180.0;
         self.speed = 0.0;
-        self.dead = false;
     }
 
-    // TODO: Change logic! Curr problem: If we jump too many times, bird does not come down.
     pub fn jump(&mut self) {
-        self.speed -= JUMP
+        self.speed = JUMP;
     }
 
     pub fn update(&mut self) {
-        self.y -= self.speed;
-        if self.y > 640.0 {
-            self.y = 640.0;
-        }
-        if self.y < 0.0 {
-            self.dead = true;
-        }
         self.speed += GRAVITY;
+        self.ferris_box.y += self.speed;
+        if self.ferris_box.y < 0.0 {
+            self.ferris_box.y = 0.0;
+        }
+        if self.ferris_box.y > 360.0 {
+            self.ferris_box.y = 360.0;
+        }
+
+        self.ferris_box.x += 60.0;
     }
 }
 
-// TODO: Bug: If bird stays at 640, game should end every 2 seconds because it should crash into the top (inverted) pipe
 #[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
 pub struct Pipe {
-    pub w: f64,
-    pub h: f64,
-    x: f64,
-    pub inverted: bool,
+    pub upper_box: Box,
+    pub lower_box: Box,
     pub passed: bool,
 }
 
 impl Pipe {
     pub fn new() -> Pipe {
         Pipe {
-            w: 50.0,
-            h: f64::from(thread_rng().gen_range(100, 400)),
-            x: 640.0,
-            inverted: false,
+            // TODO: Calculate height with randomness and padding
+            upper_box: Box::new(90.0, 50.0, 0.0, 0.0),
+            lower_box: Box::new(90.0, 50.0, 0.0, 0.0),
             passed: false,
         }
     }
 
-    pub fn inverted_pipe(h: f64) -> Pipe {
-        Pipe {
-            w: 50.0,
-            h: 500.0 - h,
-            x: 640.0,
-            inverted: true,
-            passed: false,
+    pub fn intersects(&self, other: &Box) -> bool {
+        self.upper_box.intersects(other) || self.lower_box.intersects(other)
+    }
+}
+
+
+#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
+pub struct Box {
+    pub w: f64,
+    pub h: f64,
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Box {
+    pub fn new(w: f64, h: f64, x: f64, y: f64) -> Box {
+        Box {
+            w,
+            h,
+            x,
+            y,
         }
     }
 
-    pub fn update(&mut self) {
-        self.x -= PIPE_SPEED;
-    }
-
-    pub fn contains(&self, f: Ferris) -> bool {
-        // check four points
-        // (x, y), (x + f.w, y), (x, y + f.h), (x + f.w, y + f.h)
-        if self.contains_point(f.x, f.y) || self.contains_point(f.x + f.w, f.y) 
-            || self.contains_point(f.x, f.y + f.h) || self.contains_point(f.x + f.w, f.y + f.h) {
-                return true;
-            }
-        false
-    }
-
-    fn contains_point(&self, x: f64, y: f64) -> bool {
-        if x >= self.x && x <= self.x + self.w {
-            if self.inverted {
-                return y >= HEIGHT - self.h;
-            } else {
-                return y <= self.h;
-            }
-        }
-        false
+    pub fn intersects(&self, other: &Box) -> bool {
+        self.x <= other.x + other.w && self.y <= other.y + other.h && other.x <= self.x + self.x && other.y <= self.y + self.y
     }
 }
 
