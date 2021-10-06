@@ -74,63 +74,49 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 // ------ ------
 
 // `view` describes what to display.
-fn view(model: &Model) -> Node<Msg> {
-    // if model.flappy_ferris.get_game_state() == GameState::New {
-    //     view_new(model)
-    // } else if model.flappy_ferris.get_game_state() == GameState::Playing {
-    //     view_playing(model)
-    // } else {
-    //     view_dead(model)
-    // }
-
-    // div![
-    //     C!["gamecontainer"],
-    //     div![
-    //         C!["gamescreen"],
-    //         div![ // <div id="sky" class="animated">
-    //             C!["sky"],
-
-    //         ],
-    //         div![
-    //             C!["land"]
-    //         ],
-    //         div![
-    //             C!["debug"]
-    //         ]
-    //     ]
-    // ],
-    div![
+fn view(model: &Model) -> Vec<Node<Msg>> {
+    vec![
         view_gamecontainer(model),
         view_footer(),
+        playerbox(model),
+        pipebox(model),
     ]
 }
 
 fn view_gamecontainer(model: &Model) -> Node<Msg> {
     div![
-        C!["gamecontainer"],
-        "GAME CONTAINER",
-        div![
-            C!["gamescreen"],
-            view_sky(model),
-            div![ // <div id="land" class="animated">
-                C!["land"],
-            ],
-        ]
+        attrs! {
+            At::Id => "gamecontainer"
+        },
+        "GAME CONTAINER", // deleting this gets rid of the top bricks.. why?
+        view_gamescreen(model),
+    ]
+}
+
+fn view_gamescreen(model: &Model) -> Node<Msg> {
+    div![
+        attrs! {
+            At::Id => "gamescreen",
+        },
+        view_sky(model),
+        view_land(model),
     ]
 }
 
 fn view_sky(model: &Model) -> Node<Msg> {
-    div![C!["sky"], // <div id="sky" class="animated">
-        div![C!["flyarea"],
-            // <div id="ceiling" class="animated"></div>
+    div![
+        C!["animated"],
+        attrs! {
+            At::Id => "sky",
+        },
+        div![
+            attrs! {
+                At::Id => "flyarea",
+            },
             view_ceiling(),
-            // <!-- This is the flying and pipe area container -->
-
-            // <div id="player" class="bird animated"></div>
             view_player(),
-            // <div id="bigscore"></div>
-
-            // <div id="splash"></div>
+            view_bigscore(),
+            view_splash(),
             view_scoreboard(model),
         ]
     ]
@@ -138,48 +124,91 @@ fn view_sky(model: &Model) -> Node<Msg> {
 
 fn view_ceiling() -> Node<Msg> {
     div![
-        C!["celing"]
+        C!["animated"],
+        attrs! {
+            At::Id => "ceiling",
+        }
     ]
 }
 
 fn view_player() -> Node<Msg> {
     div![
-        C!["player"],
+        C!["bird animated"],
+        attrs! {
+            At::Id => "player",
+        }
+    ]
+}
+
+fn view_bigscore() -> Node<Msg> {
+    div![
+        attrs! {
+            At::Id => "bigscore"
+        }
+    ]
+}
+
+// Get ready part
+fn view_splash() -> Node<Msg> {
+    div![
+        attrs! {At::Id => "splash"}
     ]
 }
 
 fn view_scoreboard(model: &Model) -> Node<Msg> {
     div![
-        C!["scoreboard"],
+        attrs! {
+            At::Id => "scoreboard"
+        },
         div![
-            C!["meadl"],
+            attrs! {
+                At::Id => "medal",
+            },
         ],
         div![
-            C!["currentscore"],
+            attrs! {
+                At::Id => "currentscore",
+            },
         ],
         div![
-            C!["highscore"],
+            attrs! {
+                At::Id => "highscore",
+            },
         ],
         div![
-            C!["replay"],
-            // img![
-            //     attrs! {At::src => "assets/replay.png", At::alt => "replay"},
-            // ]
+            attrs! {
+                At::Id => "replay",
+            },
+            img![
+                attrs! {
+                    At::Src => "assets/replay.png",
+                    At::Alt => "replay",
+                }
+            ]
         ],
+    ]
+}
+
+fn view_land(model: &Model) -> Node<Msg> {
+    div![
+        C!["animated"],
+        attrs! {
+            At::Id => "land",
+        }
     ]
 }
 
 fn view_footer() -> Node<Msg> {
     div![
-        C!["footer"],
+        attrs! {At::Id => "footer"},
         a![
             "original game/concept/art by dong ngyuen",
             attrs! {At::Href => "https://www.dotgears.com/"},
         ],
-        br![],
-        "recreated by ",
-        strong!("sun hyuk ahn"),
-        br![],
+        p![
+            "recreated by ",
+            strong!("sun hyuk ahn"),
+        ],
         a![
             "view github project",
             attrs! {At::Href => "https://github.com/joycaleb9705"},
@@ -187,40 +216,19 @@ fn view_footer() -> Node<Msg> {
     ]
 }
 
-// fn view_new(model: &Model) -> Node<Msg> {
-//     section![
-//         h1![C!["new-game", "is-medium"],
-//             "New Game"
-//             ],
-//         button!["Play Game", ev(Ev::Click, |_| Msg::Start),]
-//     ]
-// }
+fn playerbox(model: &Model) -> Node<Msg> {
+    div![
+        C!["boudingbox"],
+        attrs! {At::Id => "playerbox"}
+    ]
+}
 
-// fn view_playing(model: &Model) -> Node<Msg> {
-//     section![
-//         h1![C!["play-game", "is-medium"],
-//             "Playing Game"
-//         ],
-//         div![
-//             C!["Flappy Ferris"],
-//             "Flappy Ferris",
-//             "Dead: ", model.flappy_ferris.ferris.dead as i32,
-//             "Y val: ", model.flappy_ferris.ferris.y as i32,
-//             "Speed: ", model.flappy_ferris.ferris.speed as i32,
-//         ],
-//         button!["Update", ev(Ev::Click, |_| Msg::Update),],
-//         // ev(Ev::KeyUp, |_| Msg::Jump),
-//     ]
-// }
-
-// fn view_dead(model: &Model) -> Node<Msg> {
-//     section![
-//         h1![C!["end-game", "is-medium"],
-//             "Game Over"
-//         ],
-//         button!["Restart Game", ev(Ev::Click, |_| Msg::Restart),]
-//     ]
-// }
+fn pipebox(model: &Model) -> Node<Msg> {
+    div![
+        C!["boudingbox"],
+        attrs! {At::Id => "pipebox"}
+    ]
+}
 
 // ------ ------
 //     Start
