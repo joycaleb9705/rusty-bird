@@ -87,16 +87,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1056f553da426e9c025a662efa48b52e62e0a3a7648aa2d15aeaaf7f0d329357"
 
 [[package]]
-name = "flappy-ferris"
-version = "0.1.0"
-dependencies = [
- "rand",
- "seed",
- "serde",
- "wasm-bindgen-test",
-]
-
-[[package]]
 name = "futures"
 version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -441,6 +431,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
  "semver",
+]
+
+[[package]]
+name = "rusty-bird"
+version = "0.1.0"
+dependencies = [
+ "rand",
+ "seed",
+ "serde",
+ "wasm-bindgen-test",
 ]
 
 [[package]]

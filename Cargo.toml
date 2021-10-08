@@ -1,6 +1,6 @@
 [package]
 version = "0.1.0"
-name = "flappy-ferris"
+name = "rusty-bird"
 repository = "https://github.com/seed-rs/seed-quickstart"
 authors = ["joycaleb9705 <joycaleb9705@berkeley.edu>"]
 description = "App Description"

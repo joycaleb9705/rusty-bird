@@ -1,9 +1,9 @@
 #![allow(clippy::wildcard_imports)]
 
-use flappy_ferris::{FlappyFerris, GameState, Box};
+use rusty_bird::{RustyBird, GameState, Box};
 use seed::{prelude::*, *};
 
-mod flappy_ferris;
+mod rusty_bird;
 
 const SPACE_KEY: &str = "Space";
 
@@ -12,12 +12,10 @@ const SPACE_KEY: &str = "Space";
 // ------ ------
 
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
-    // TODO: Curr Ver: Space handles all the events
-    // TODO: Update Ver: Separate into different MSG
     orders.stream(streams::window_event(Ev::KeyDown, |ev| Msg::Space(ev.unchecked_into())));
     orders.stream(streams::interval(15, || Msg::Update));
     let model = Model { 
-        flappy_ferris: flappy_ferris::FlappyFerris::new() 
+        rusty_bird: rusty_bird::RustyBird::new() 
     };
     model
 }
@@ -27,7 +25,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 // ------ ------
 
 struct Model {
-    flappy_ferris: FlappyFerris,
+    rusty_bird: RustyBird,
 }
 
 // ------ ------
@@ -49,25 +47,25 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Space(ev) => {
             ev.prevent_default();
             if ev.key().as_str() == "Enter" {
-                match model.flappy_ferris.get_game_state() {
+                match model.rusty_bird.get_game_state() {
                     GameState::Start => {
-                        model.flappy_ferris.play_game();
-                        model.flappy_ferris.ferris.jump();
+                        model.rusty_bird.play_game();
+                        model.rusty_bird.bird.jump();
                     },
-                    GameState::Over => model.flappy_ferris.reset_game(),
-                    GameState::Playing => model.flappy_ferris.ferris.jump(),
+                    GameState::Over => model.rusty_bird.reset_game(),
+                    GameState::Playing => model.rusty_bird.bird.jump(),
                 }
             }
         },
-        Msg::Start => model.flappy_ferris.play_game(),
-        Msg::Jump => model.flappy_ferris.ferris.jump(),
+        Msg::Start => model.rusty_bird.play_game(),
+        Msg::Jump => model.rusty_bird.bird.jump(),
         Msg::Update => {
-            match model.flappy_ferris.get_game_state() {
-                GameState::Playing => {model.flappy_ferris.update();},
+            match model.rusty_bird.get_game_state() {
+                GameState::Playing => {model.rusty_bird.update();},
                 _ => (),
             }
         }
-        Msg::Restart => model.flappy_ferris.reset_game(),
+        Msg::Restart => model.rusty_bird.reset_game(),
     }
 }
 
@@ -80,8 +78,6 @@ fn view(model: &Model) -> Vec<Node<Msg>> {
     vec![
         view_gamecontainer(model),
         view_footer(),
-        // playerbox(model),
-        // pipebox(model),
     ]
 }
 
@@ -101,7 +97,7 @@ fn view_gamescreen(model: &Model) -> Node<Msg> {
             At::Id => "gamescreen",
         },
         view_sky(model),
-        view_land(),
+        view_land(model),
     ]
 }
 
@@ -111,41 +107,48 @@ fn view_sky(model: &Model) -> Node<Msg> {
         attrs! {
             At::Id => "sky",
         },
+        IF!(matches!(model.rusty_bird.get_game_state(), GameState::Over) => 
+            style! {
+                St::AnimationPlayState => "paused"
+            }
+        ),
         view_flyarea(model),
     ]
 }
 
 fn view_flyarea(model: &Model) -> Node<Msg> {
-    let game_state = model.flappy_ferris.get_game_state();
+    let game_state = model.rusty_bird.get_game_state();
     div![
         attrs! {
             At::Id => "flyarea",
         },
-        view_ceiling(),
+        view_ceiling(game_state),
         view_player(model),
-        div![
-            format! {
-                "TIME: {}, FERRIS X: {}, FERRIS Y: {}",
-                model.flappy_ferris.time,
-                model.flappy_ferris.ferris.ferris_box.x,
-                model.flappy_ferris.ferris.ferris_box.y,
-            }
-        ],
         view_pipes(model),
         IF!(matches!(game_state, GameState::Playing) => 
-            view_bigscore(model.flappy_ferris.get_score())
+            div![
+                attrs! {
+                    At::Id => "bigscore"
+                },
+                get_score(model.rusty_bird.get_score(), true),
+            ]
         ),
         view_splash(game_state),
-        view_scoreboard(game_state),
+        view_scoreboard(model),
     ]
 }
 
-fn view_ceiling() -> Node<Msg> {
+fn view_ceiling(game_state: GameState) -> Node<Msg> {
     div![
         C!["animated"],
         attrs! {
             At::Id => "ceiling",
         },
+        IF!(matches!(game_state, GameState::Over) => 
+            style! {
+                St::AnimationPlayState => "paused"
+            }
+        )
     ]
 }
 
@@ -155,52 +158,28 @@ fn view_player(model: &Model) -> Node<Msg> {
         attrs! {
             At::Id => "player",
         },
-        IF!(matches!(model.flappy_ferris.get_game_state(), GameState::Playing) => 
+        IF!(matches!(model.rusty_bird.get_game_state(), GameState::Playing) => 
             style! {
-                St::Top => px(model.flappy_ferris.ferris.ferris_box.y);
+                St::Top => px(model.rusty_bird.bird.bird_box.y);
             }
         )
     ]
 }
 
-fn view_pipes(model: &Model) -> Node<Msg> {
-    if !model.flappy_ferris.pipe_manager.pipes.is_empty() {
-        div![
-            C!["pipe animated"],
-            format! {
-                "PIPE_X: {}, UPPER_PIPE_BOT: {}, LOWER_PIPE_TOP: {}",
-                model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe.x,
-                model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().upper_pipe.bot(),
-                model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe.top(),
-            },
-            view_upper(&model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().upper_pipe),
-            view_lower(&model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe)
-        ]
-    } else {
-        div![
-            "NO PIPE"
-        ]
+fn view_pipes(model: &Model) -> Vec<Node<Msg>> {
+    let mut pipe_vec = Vec::new();
+    for pipe in &model.rusty_bird.pipe_manager.pipes {
+        pipe_vec.push(
+            div![
+                // TODO: Get rid of this class; Don't need
+                C!["pipe animated"],
+                view_upper(&pipe.upper_pipe),
+                view_lower(&pipe.lower_pipe)
+            ]
+        )
     }
-        
+    pipe_vec
 }
-
-// fn view_pipes(model: &Model) -> Vec<Node<Msg>> {
-//     let mut pipe_vec = Vec::new();
-//     for pipe in &model.flappy_ferris.pipe_manager.pipes {
-//         pipe_vec.push(
-//             div![
-//                 C!["pipe animated"],
-//                 format! {
-//                     "PIPE_X: {}",
-//                     &pipe.lower_pipe.x
-//                 },
-//                 view_upper(&pipe.upper_pipe),
-//                 view_lower(&pipe.lower_pipe)
-//             ]
-//         )
-//     }
-//     pipe_vec
-// }
 
 fn view_upper(upper_pipe: &Box) -> Node<Msg> {
     div![
@@ -223,16 +202,25 @@ fn view_lower(lower_pipe: &Box) -> Node<Msg> {
 }
 
 // Not centered, the front digit is centered but not the second digit
-fn view_bigscore(score: i32) -> Node<Msg> {
+fn get_score(score: i32, big: bool) -> Vec<Node<Msg>> {
     let score_str = score.to_string();
     let score_chars = score_str.chars();
-    let mut big_score = Vec::new();
+    let mut score = Vec::new();
     for c in score_chars {
-        let src = format!{
-            "assets/font_big_{}.png",
-            c
-        };
-        big_score.push(img![
+        let src;
+        if big {
+            src = format! {
+                "assets/font_big_{}.png",
+                c
+            };
+        } else {
+            src = format! {
+                "assets/font_small_{}.png",
+                c
+            };
+        }
+        
+        score.push(img![
             attrs! {
                 At::Src => src
                 At::Alt => c,
@@ -240,12 +228,7 @@ fn view_bigscore(score: i32) -> Node<Msg> {
         ]);
     }
 
-    div![
-        attrs! {
-            At::Id => "bigscore"
-        },
-        big_score,
-    ]
+    score
 }
 
 fn view_splash(game_state: GameState) -> Node<Msg> {
@@ -261,8 +244,9 @@ fn view_splash(game_state: GameState) -> Node<Msg> {
     ]
 }
 
-fn view_scoreboard(game_state: GameState) -> Node<Msg> {
-    let is_over = matches!(game_state, GameState::Over);
+fn view_scoreboard(model: &Model) -> Node<Msg> {
+    let is_over = matches!(model.rusty_bird.get_game_state(), GameState::Over);
+    let score = model.rusty_bird.get_score();
     div![
         attrs! {
             At::Id => "scoreboard"
@@ -271,11 +255,16 @@ fn view_scoreboard(game_state: GameState) -> Node<Msg> {
             attrs! {
                 At::Id => "medal",
             },
+            style! {
+                St::Opacity => 1;
+            },
+            get_medal(score)
         ],
         div![
             attrs! {
                 At::Id => "currentscore",
             },
+            get_score(score, false),
         ],
         div![
             attrs! {
@@ -305,12 +294,38 @@ fn view_scoreboard(game_state: GameState) -> Node<Msg> {
     ]
 }
 
-fn view_land() -> Node<Msg> {
+fn get_medal(score: i32) -> Node<Msg> {
+    let medal = match score {
+        0..=9 => {return div![]},
+        10..=19 => "bronze",
+        20..=29 => "silver",
+        30..=39 => "gold",
+        _ => "platinum",
+    };
+    img![
+        attrs! {
+            At::Src => 
+                format! {
+                    "assets/medal_{}.png",
+                    medal
+                }
+            At::Alt => medal,
+        }
+    ]
+}
+
+
+fn view_land(model: &Model) -> Node<Msg> {
     div![
         C!["animated"],
         attrs! {
             At::Id => "land",
-        }
+        },
+        IF!(matches!(model.rusty_bird.get_game_state(), GameState::Over) => 
+            style! {
+                St::AnimationPlayState => "paused"
+            }
+        )
     ]
 }
 
@@ -337,24 +352,6 @@ fn view_footer() -> Node<Msg> {
         ]
     ]
 }
-
-// fn playerbox(model: &Model) -> Node<Msg> {
-//     div![
-//         C!["boudingbox"],
-//         attrs! {
-//             At::Id => "playerbox"
-//         },
-//     ]
-// }
-
-// fn pipebox(model: &Model) -> Node<Msg> {
-//     div![
-//         C!["boudingbox"],
-//         attrs! {
-//             At::Id => "pipebox"
-//         },
-//     ]
-// }
 
 // ------ ------
 //     Start
