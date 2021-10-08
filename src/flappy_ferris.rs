@@ -74,6 +74,9 @@ impl FlappyFerris {
             None => {return self.game_state;}
         }
 
+
+        // TODO: Need to do it for all of the pipes
+
         curr_pipe.upper_pipe.x -= 2.0;
         curr_pipe.lower_pipe.x -= 2.0;
 
@@ -131,7 +134,7 @@ impl Ferris {
     pub fn update(&mut self) {
         self.speed += GRAVITY;
         self.ferris_box.y += self.speed;
-        if self.ferris_box.y < 0.0 {
+        if self.ferris_box.top() < 0.0 {
             self.ferris_box.y = 0.0;
         }
         if self.ferris_box.y > FLY_AREA {
@@ -161,14 +164,15 @@ impl PipeManager {
 
     pub fn update(&mut self, ferris_x: f64) {
         self.remove_old(ferris_x);
-        self.add_pipe(ferris_x);
+        self.add_pipe();
     }
 
-    fn add_pipe(&mut self, ferris_x: f64) {
-        let new_pipe = Pipe::new(ferris_x);
+    fn add_pipe(&mut self) {
+        let new_pipe = Pipe::new();
         self.pipes.push(new_pipe);
     }
 
+    // TODO: Remove if x <= -100
     fn remove_old(&mut self, ferris_x: f64) {
         self.pipes.retain(|&pipe| !pipe.removable());
     }
@@ -185,29 +189,31 @@ impl PipeManager {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub struct Pipe {
-    pub lower_pipe: Box,
     pub upper_pipe: Box,
+    pub lower_pipe: Box,
     pub passed: bool,
 }
 
 impl Pipe {
-    pub fn new(ferris_x: f64) -> Pipe {
+    pub fn new() -> Pipe {
         // let pipe_x = ferris_x + 200.0;
         let pipe_x = 900.0;
-        let lower_h = f64::from(thread_rng().gen_range(110, 221));
-        let upper_h = FLY_AREA - PIPE_HEIGHT - lower_h;
-        let lower_y = 0.0;
-        let upper_y = lower_y + lower_h + PIPE_HEIGHT;
+        let upper_h = f64::from(thread_rng().gen_range(110, 221));
+        let lower_h = FLY_AREA - PIPE_HEIGHT - upper_h;
+        let upper_y = 0.0;
+        let lower_y = upper_h + PIPE_HEIGHT;
+
+        // let lower_y = 
         
         Pipe {
-            lower_pipe: Box::new(PIPE_WIDTH, lower_h, pipe_x, lower_y),
             upper_pipe: Box::new(PIPE_WIDTH, upper_h, pipe_x, upper_y),
+            lower_pipe: Box::new(PIPE_WIDTH, lower_h, pipe_x, lower_y),
             passed: false,
         }
     }
 
     pub fn intersects(&self, other: &Box) -> bool {
-        self.lower_pipe.intersects(other, false) || self.upper_pipe.intersects(other, true)
+        self.lower_pipe.intersects(other) || self.upper_pipe.intersects(other)
     }
 
     pub fn removable(&self) -> bool {
@@ -244,25 +250,18 @@ impl Box {
     }
 
     pub fn bot(&self) -> f64 {
-        self.y
-    }
-
-    pub fn top(&self) -> f64 {
         self.y + self.h
     }
 
-    pub fn intersects(&self, other: &Box, inverted: bool) -> bool {
-        if !inverted {
-            self.left() <= other.right()
-            && other.left() <= self.right()
-            && self.bot() <= other.top()
-            && other.bot() <= self.top()
-        } else {
-            self.left() <= other.right()
-            && other.left() <= self.right()
-            && self.bot() <= other.top()
-            && other.bot() <= self.top()
-        }
+    pub fn top(&self) -> f64 {
+        self.y
+    }
+
+    pub fn intersects(&self, other: &Box) -> bool {
+        self.right() >= other.left()
+        && other.right() >= self.left()
+        && self.bot() >= other.top()
+        && other.bot() >= self.top()
     }
 }
 

@@ -171,7 +171,7 @@ fn view_pipes(model: &Model) -> Node<Msg> {
                 "PIPE_X: {}, UPPER_PIPE_BOT: {}, LOWER_PIPE_TOP: {}",
                 model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe.x,
                 model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().upper_pipe.bot(),
-                420.0 - model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe.top(),
+                model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe.top(),
             },
             view_upper(&model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().upper_pipe),
             view_lower(&model.flappy_ferris.pipe_manager.pipes.get(0).unwrap().lower_pipe)
@@ -206,7 +206,7 @@ fn view_upper(upper_pipe: &Box) -> Node<Msg> {
     div![
         C!["pipe_upper"],
         style! {
-            St::Height => px(upper_pipe.top() - upper_pipe.bot()),
+            St::Height => px(upper_pipe.bot()),
             St::Left => px(upper_pipe.x),
         }
     ]
@@ -216,7 +216,7 @@ fn view_lower(lower_pipe: &Box) -> Node<Msg> {
     div![
         C!["pipe_lower"],
         style! {
-            St::Height => px(lower_pipe.top()),
+            St::Height => px(420.0 - lower_pipe.top()),
             St::Left => px(lower_pipe.x),
         }
     ]
