@@ -1,21 +1,20 @@
 use rand::thread_rng;
 use rand::Rng;
-use serde::Deserialize;
-use std::cmp;
+use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
-// const WIDTH: f64 = 640.0;
-const FLY_AREA: f64 = 360.0; // fly_area = top pipe height + bottom pipe height + pipe height (space in btwn)
+const FLY_AREA: f64 = 420.0; // fly_area = top pipe height + bottom pipe height + pipe height (space in btwn)
 const PIPE_HEIGHT: f64 = 90.0;
 const PIPE_WIDTH: f64 = 50.0;
 const JUMP: f64 = -4.5;
 const GRAVITY: f64 = 0.25;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FlappyFerris {
     pub ferris: Ferris,
-    pipe_manager: PipeManager,
+    pub pipe_manager: PipeManager,
     score: i32,
-    time: i32,
+    pub time: i32,
     game_state: GameState
 }
 
@@ -45,16 +44,21 @@ impl FlappyFerris {
     pub fn get_game_state(&self) -> GameState {
         self.game_state
     }
+
+    pub fn get_score(&self) -> i32 {
+        self.score
+    }
     
     // TODO: Update update
     pub fn update(&mut self) -> GameState {
+        self.time += 1;
         self.ferris.update();
         if self.ferris.dead {
             self.game_state = GameState::Over;
             return self.game_state;
         }
         
-        if self.time > 0 && self.time % 1600 == 0 {
+        if self.time > 0 && self.time % 80 == 0 {
             self.pipe_manager.update(self.ferris.ferris_box.x);
         }
 
@@ -62,34 +66,41 @@ impl FlappyFerris {
             return self.game_state;
         }
 
-        // TODO: unsafe; should do a None check
-        let mut curr_pipe = self.pipe_manager.get_first_unpassed().unwrap();
+        // Update all pipe's x position by 2px
 
-        if self.ferris.ferris_box.right() > curr_pipe.top_pipe.left() {
+        let mut curr_pipe;
+        match self.pipe_manager.get_first_unpassed() {
+            Some(pipe) => curr_pipe = pipe,
+            None => {return self.game_state;}
+        }
+
+        curr_pipe.upper_pipe.x -= 2.0;
+        curr_pipe.lower_pipe.x -= 2.0;
+
+        if self.ferris.ferris_box.right() > curr_pipe.upper_pipe.left() {
             if curr_pipe.intersects(&self.ferris.ferris_box) {
                 self.game_state = GameState::Over;
                 return self.game_state;
             }
         }
 
-        if self.ferris.ferris_box.left() > curr_pipe.top_pipe.right() {
+        if self.ferris.ferris_box.left() > curr_pipe.upper_pipe.right() {
             curr_pipe.passed = true;
             self.score += 1;
         }
         
-        self.time += 1;
         self.game_state
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub enum GameState {
     Start,
     Playing,
     Over,
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Ferris {
     pub ferris_box: Box,
     pub speed: f64,
@@ -100,7 +111,7 @@ pub struct Ferris {
 impl Ferris {
     pub fn new() -> Ferris {
         Ferris {
-            ferris_box: Box::new(35.0, 25.0, 60.0, 180.0),
+            ferris_box: Box::new(34.0, 24.0, 60.0, FLY_AREA / 2.0),
             speed: 0.0,
             dead: false,
         }
@@ -108,7 +119,7 @@ impl Ferris {
 
     pub fn reset(&mut self) {
         self.ferris_box.x = 60.0;
-        self.ferris_box.y = 180.0;
+        self.ferris_box.y = FLY_AREA / 2.0;
         self.speed = 0.0;
         self.dead = false;
     }
@@ -122,17 +133,17 @@ impl Ferris {
         self.ferris_box.y += self.speed;
         if self.ferris_box.y < 0.0 {
             self.ferris_box.y = 0.0;
+        }
+        if self.ferris_box.y > FLY_AREA {
+            self.ferris_box.y = FLY_AREA;
             self.dead = true;
         }
-        if self.ferris_box.y > 360.0 {
-            self.ferris_box.y = 360.0;
-        }
 
-        self.ferris_box.x += 60.0;
+        // self.ferris_box.x += 60.0;
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct PipeManager {
     pub pipes: Vec<Pipe>,
 }
@@ -159,7 +170,7 @@ impl PipeManager {
     }
 
     fn remove_old(&mut self, ferris_x: f64) {
-        self.pipes.retain(|&pipe| !pipe.removable(ferris_x));
+        self.pipes.retain(|&pipe| !pipe.removable());
     }
 
     pub fn get_first_unpassed(&mut self) -> Option<&mut Pipe> {
@@ -172,40 +183,41 @@ impl PipeManager {
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub struct Pipe {
-    pub bot_pipe: Box,
-    pub top_pipe: Box,
+    pub lower_pipe: Box,
+    pub upper_pipe: Box,
     pub passed: bool,
 }
 
 impl Pipe {
-    // New pipe's x is curr ferris's x + 480 (1.6 secs)
     pub fn new(ferris_x: f64) -> Pipe {
-        let pipe_x = ferris_x + 480.0;
-        let bot_height = f64::from(thread_rng().gen_range(80, 191));
-        let top_height = FLY_AREA - PIPE_HEIGHT - bot_height;
-        let bot_y = 0.0;
-        let top_y = bot_y + bot_height + PIPE_HEIGHT;
+        // let pipe_x = ferris_x + 200.0;
+        let pipe_x = 900.0;
+        let lower_h = f64::from(thread_rng().gen_range(110, 221));
+        let upper_h = FLY_AREA - PIPE_HEIGHT - lower_h;
+        let lower_y = 0.0;
+        let upper_y = lower_y + lower_h + PIPE_HEIGHT;
         
         Pipe {
-            bot_pipe: Box::new(PIPE_WIDTH, bot_height, pipe_x, bot_y),
-            top_pipe: Box::new(PIPE_WIDTH, top_height, pipe_x, top_y),
+            lower_pipe: Box::new(PIPE_WIDTH, lower_h, pipe_x, lower_y),
+            upper_pipe: Box::new(PIPE_WIDTH, upper_h, pipe_x, upper_y),
             passed: false,
         }
     }
 
     pub fn intersects(&self, other: &Box) -> bool {
-        self.top_pipe.intersects(other) || self.bot_pipe.intersects(other)
+        self.lower_pipe.intersects(other, false) || self.upper_pipe.intersects(other, true)
     }
 
-    pub fn removable(&self, ferris_x: f64) -> bool {
-        self.bot_pipe.x + 100.0 < ferris_x
+    pub fn removable(&self) -> bool {
+        // self.lower_pipe.left() + 100.0 < ferris_x
+        self.lower_pipe.left() <= -100.00
     }
 }
 
 
-#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub struct Box {
     pub w: f64,
     pub h: f64,
@@ -239,8 +251,18 @@ impl Box {
         self.y + self.h
     }
 
-    pub fn intersects(&self, other: &Box) -> bool {
-        self.x <= other.x + other.w && self.y <= other.y + other.h && other.x <= self.x + self.x && other.y <= self.y + self.y
+    pub fn intersects(&self, other: &Box, inverted: bool) -> bool {
+        if !inverted {
+            self.left() <= other.right()
+            && other.left() <= self.right()
+            && self.bot() <= other.top()
+            && other.bot() <= self.top()
+        } else {
+            self.left() <= other.right()
+            && other.left() <= self.right()
+            && self.bot() <= other.top()
+            && other.bot() <= self.top()
+        }
     }
 }
 
