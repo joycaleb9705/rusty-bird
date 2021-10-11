@@ -1,11 +1,11 @@
 use rand::thread_rng;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 const FLY_AREA: f64 = 420.0; // fly_area = top pipe height + bottom pipe height + pipe height (space in btwn)
 const PIPE_HEIGHT: f64 = 90.0;
 const PIPE_WIDTH: f64 = 50.0;
+const PIPE_SHIFT: f64 = 2.0;
 const JUMP: f64 = -4.5;
 const GRAVITY: f64 = 0.25;
 
@@ -14,7 +14,8 @@ pub struct RustyBird {
     pub bird: Bird,
     pub pipe_manager: PipeManager,
     score: i32,
-    pub time: i32,
+    high_score: i32,
+    time: i32,
     game_state: GameState
 }
 
@@ -24,6 +25,7 @@ impl RustyBird {
             bird: Bird::new(),
             pipe_manager: PipeManager::new(),
             score: 0,
+            high_score: 0,
             time: 0,
             game_state: GameState::Start
         }
@@ -48,12 +50,17 @@ impl RustyBird {
     pub fn get_score(&self) -> i32 {
         self.score
     }
+
+    pub fn get_high_score(&self) -> i32 {
+        self.high_score
+    }
     
     pub fn update(&mut self) -> GameState {
         self.time += 1;
         self.bird.update();
         if self.bird.dead {
             self.game_state = GameState::Over;
+            self.update_high_score();
             return self.game_state;
         }
         
@@ -72,6 +79,7 @@ impl RustyBird {
         if self.bird.bird_box.right() > curr_pipe.upper_pipe.left() {
             if curr_pipe.intersects(&self.bird.bird_box) {
                 self.game_state = GameState::Over;
+                self.update_high_score();
                 return self.game_state;
             }
         }
@@ -82,6 +90,12 @@ impl RustyBird {
         }
         
         self.game_state
+    }
+
+    fn update_high_score(&mut self) {
+        if self.score > self.high_score {
+            self.high_score = self.score;
+        }
     }
 }
 
@@ -187,14 +201,11 @@ pub struct Pipe {
 
 impl Pipe {
     pub fn new() -> Pipe {
-        // let pipe_x = ferris_x + 200.0;
         let pipe_x = 900.0;
         let upper_h = f64::from(thread_rng().gen_range(110, 221));
         let lower_h = FLY_AREA - PIPE_HEIGHT - upper_h;
         let upper_y = 0.0;
         let lower_y = upper_h + PIPE_HEIGHT;
-
-        // let lower_y = 
         
         Pipe {
             upper_pipe: Box::new(PIPE_WIDTH, upper_h, pipe_x, upper_y),
@@ -204,8 +215,8 @@ impl Pipe {
     }
 
     pub fn shift(&mut self) {
-        self.upper_pipe.x -= 2.0;
-        self.lower_pipe.x -= 2.0;
+        self.upper_pipe.x -= PIPE_SHIFT;
+        self.lower_pipe.x -= PIPE_SHIFT;
     }
 
     pub fn intersects(&self, other: &Box) -> bool {

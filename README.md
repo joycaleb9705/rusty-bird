@@ -1,6 +1,9 @@
-# Seed Quickstart
+# Rusty Bird
 
-> Basic Rust-only template for your new Seed app.
+A clone of Flappy Bird, built with Rust framework, Seed.
+Open source game created by Nebez Briefkani.
+Original game created by Dong Ngyuen.
+
 
 ## 1. Create a new project
 

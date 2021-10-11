@@ -2,7 +2,8 @@
 
 use rusty_bird::{RustyBird, GameState, Box};
 use seed::{prelude::*, *};
-use tokio::time::{sleep, Duration};
+use std::cmp;
+// use tokio::time::{sleep, Duration};
 
 mod rusty_bird;
 
@@ -16,7 +17,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.stream(streams::window_event(Ev::KeyDown, |ev| Msg::Space(ev.unchecked_into())));
     orders.stream(streams::interval(15, || Msg::Update));
     let model = Model { 
-        rusty_bird: rusty_bird::RustyBird::new() 
+        rusty_bird: rusty_bird::RustyBird::new() ,
     };
     model
 }
@@ -38,7 +39,6 @@ enum Msg {
     Space(web_sys::KeyboardEvent),
     Update,
     Restart,
-    // Wait,
 }
 
 // `update` describes how to handle each `Msg`.
@@ -62,11 +62,8 @@ fn update(msg: Msg, model: &mut Model, order: &mut impl Orders<Msg>) {
         Msg::Update => {
             match model.rusty_bird.get_game_state() {
                 GameState::Playing => {
-                    if model.rusty_bird.update() == GameState::Over {
-                        // TODO: Wait 600ms
-                        // let ten_millis = std::time::Duration::from_millis(600);
-                        // std::thread::sleep(ten_millis);
-                    }},
+                    model.rusty_bird.update();
+                },
                 _ => (),
             }
         }
@@ -250,9 +247,6 @@ fn view_splash(game_state: GameState) -> Node<Msg> {
     ]
 }
 
-// TODO: When dead, make the game unclickable (600ms)
-// TODO: Show the scoreboard and then make it clickable
-
 fn view_scoreboard(model: &Model) -> Node<Msg> {
     let is_over = matches!(model.rusty_bird.get_game_state(), GameState::Over);
     let score = model.rusty_bird.get_score();
@@ -279,6 +273,8 @@ fn view_scoreboard(model: &Model) -> Node<Msg> {
             attrs! {
                 At::Id => "highscore",
             },
+            get_score(model.rusty_bird.get_high_score(), false),
+            // get_score(model.rusty_bird.get_high_score(), false),
         ],
         div![
             attrs! {
@@ -348,17 +344,17 @@ fn view_footer() -> Node<Msg> {
             At::Id => "footer"
         },
         a![
-            "original game/concept/art by dong ngyuen",
+            "original game/concept/art by Dong Ngyuen",
             attrs! {
                 At::Href => "https://www.dotgears.com/"
             },
         ],
         p![
             "recreated in Rust by ",
-            strong!("sun hyuk ahn"),
+            strong!("Sun Hyuk Ahn"),
         ],
         a![
-            "view github project",
+            "view Github project",
             attrs! {
                 At::Href => "https://github.com/joycaleb9705"
             },
