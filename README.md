@@ -4,10 +4,10 @@ A clone of Flappy Bird, build with Rust framework Seed.
 
 <p align="center">
   <img src="preview.png"
-  width="300" height="600">
+  width="200" height="400">
 </p>
 
-Open source game created by Nebez Briefkani.
+Open source game created by Nebez Briefkani (https://github.com/nebez/floppybird).
 
 Original game created by Dong Ngyuen.
 
