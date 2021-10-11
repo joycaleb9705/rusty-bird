@@ -2,7 +2,7 @@
 
 A clone of Flappy Bird, build with Rust framework Seed.
 
-<p align="right">
+<p align="centered">
   <img src="preview.png"
   width="200" height="400">
 </p>
