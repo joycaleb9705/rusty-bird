@@ -1,6 +1,6 @@
 use rand::thread_rng;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize}; 
 
 const FLY_AREA: f64 = 420.0; // fly_area = top pipe height + bottom pipe height + pipe height (space in btwn)
 const PIPE_HEIGHT: f64 = 90.0;
