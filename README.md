@@ -1,6 +1,6 @@
 # Rusty Bird
 
-A clone of Flappy Bird, build with Rust framework Seed.
+A clone of Flappy Bird, built with Rust framework Seed.
 
 <p align="center">
   <img src="public/preview.png"
