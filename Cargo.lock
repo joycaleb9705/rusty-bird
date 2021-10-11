@@ -440,6 +440,7 @@ dependencies = [
  "rand",
  "seed",
  "serde",
+ "tokio",
  "wasm-bindgen-test",
 ]
 
@@ -644,6 +645,16 @@ dependencies = [
  "quote",
  "standback",
  "syn",
+]
+
+[[package]]
+name = "tokio"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46409491c9375a693ce7032101970a54f8a2010efb77e13f70788f0d84489e39"
+dependencies = [
+ "autocfg",
+ "pin-project-lite",
 ]
 
 [[package]]

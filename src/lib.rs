@@ -2,10 +2,11 @@
 
 use rusty_bird::{RustyBird, GameState, Box};
 use seed::{prelude::*, *};
+use tokio::time::{sleep, Duration};
 
 mod rusty_bird;
 
-const SPACE_KEY: &str = "Space";
+const SPACE_KEY: &str = " ";
 
 // ------ ------
 //     Init
@@ -35,33 +36,37 @@ struct Model {
 #[derive(Clone)]
 enum Msg {
     Space(web_sys::KeyboardEvent),
-    Start,
-    Jump,
     Update,
     Restart,
+    // Wait,
 }
 
 // `update` describes how to handle each `Msg`.
-fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+fn update(msg: Msg, model: &mut Model, order: &mut impl Orders<Msg>) {
     match msg {
         Msg::Space(ev) => {
             ev.prevent_default();
-            if ev.key().as_str() == "Enter" {
+            if ev.key().as_str() == SPACE_KEY {
                 match model.rusty_bird.get_game_state() {
                     GameState::Start => {
                         model.rusty_bird.play_game();
                         model.rusty_bird.bird.jump();
                     },
-                    GameState::Over => model.rusty_bird.reset_game(),
+                    GameState::Over => {
+                        model.rusty_bird.reset_game();
+                    },
                     GameState::Playing => model.rusty_bird.bird.jump(),
                 }
             }
         },
-        Msg::Start => model.rusty_bird.play_game(),
-        Msg::Jump => model.rusty_bird.bird.jump(),
         Msg::Update => {
             match model.rusty_bird.get_game_state() {
-                GameState::Playing => {model.rusty_bird.update();},
+                GameState::Playing => {
+                    if model.rusty_bird.update() == GameState::Over {
+                        // TODO: Wait 600ms
+                        // let ten_millis = std::time::Duration::from_millis(600);
+                        // std::thread::sleep(ten_millis);
+                    }},
                 _ => (),
             }
         }
@@ -86,7 +91,6 @@ fn view_gamecontainer(model: &Model) -> Node<Msg> {
         attrs! {
             At::Id => "gamecontainer"
         },
-        "NEED THIS FOR CEILING", // deleting this gets rid of the top bricks.. why?
         view_gamescreen(model),
     ]
 }
@@ -162,6 +166,11 @@ fn view_player(model: &Model) -> Node<Msg> {
             style! {
                 St::Top => px(model.rusty_bird.bird.bird_box.y);
             }
+        ),
+        IF!(matches!(model.rusty_bird.get_game_state(), GameState::Over) =>
+            style! {
+                St::Opacity => 0;
+            }
         )
     ]
 }
@@ -171,8 +180,6 @@ fn view_pipes(model: &Model) -> Vec<Node<Msg>> {
     for pipe in &model.rusty_bird.pipe_manager.pipes {
         pipe_vec.push(
             div![
-                // TODO: Get rid of this class; Don't need
-                C!["pipe animated"],
                 view_upper(&pipe.upper_pipe),
                 view_lower(&pipe.lower_pipe)
             ]
@@ -201,7 +208,6 @@ fn view_lower(lower_pipe: &Box) -> Node<Msg> {
     ]
 }
 
-// Not centered, the front digit is centered but not the second digit
 fn get_score(score: i32, big: bool) -> Vec<Node<Msg>> {
     let score_str = score.to_string();
     let score_chars = score_str.chars();
@@ -243,6 +249,9 @@ fn view_splash(game_state: GameState) -> Node<Msg> {
         )
     ]
 }
+
+// TODO: When dead, make the game unclickable (600ms)
+// TODO: Show the scoreboard and then make it clickable
 
 fn view_scoreboard(model: &Model) -> Node<Msg> {
     let is_over = matches!(model.rusty_bird.get_game_state(), GameState::Over);
@@ -289,7 +298,11 @@ fn view_scoreboard(model: &Model) -> Node<Msg> {
             ev(Ev::Click, |_| Msg::Restart)
         ],
         IF!(is_over => style! {
-            St::Display => "block"
+            St::Display => "block",
+            St::Opacity => 1,
+            St::Transition => St::Opacity,
+            St::TransitionDuration => "600ms",
+            St::TransitionTimingFunction => "ease",
         })
     ]
 }
@@ -341,7 +354,7 @@ fn view_footer() -> Node<Msg> {
             },
         ],
         p![
-            "recreated by ",
+            "recreated in Rust by ",
             strong!("sun hyuk ahn"),
         ],
         a![

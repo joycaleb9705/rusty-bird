@@ -19,6 +19,7 @@ wasm-bindgen-test = "0.3.18"
 seed = "0.8.0"
 rand = "*"
 serde = "1.0.130"
+tokio = "0.3.0"
 
 [profile.release]
 lto = true
