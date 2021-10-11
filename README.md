@@ -3,7 +3,7 @@
 A clone of Flappy Bird, build with Rust framework Seed.
 
 <p align="center">
-  <img src="preview.png"
+  <img src="public/preview.png"
   width="200" height="400">
 </p>
 
