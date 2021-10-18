@@ -323,7 +323,6 @@ fn get_medal(score: i32) -> Node<Msg> {
     ]
 }
 
-
 fn view_land(model: &Model) -> Node<Msg> {
     div![
         C!["animated"],

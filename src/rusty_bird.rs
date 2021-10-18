@@ -113,7 +113,6 @@ pub struct Bird {
     pub dead: bool,
 }
 
-// Skip rotation
 impl Bird {
     pub fn new() -> Bird {
         Bird {
@@ -274,37 +273,62 @@ impl Box {
 #[cfg(test)]
 mod tests {
 
-    use crate::rusty_bird::{RustyBird, GameState, Bird, Pipe};
+    use crate::rusty_bird::{RustyBird, GameState, Bird, PipeManager, Pipe};
+    
+    // Bird intersects pipe if both boxes intersect 
+    #[test]
+    fn test_intersection() {
+        let mut bird: Bird = Bird::new();
+        bird.bird_box.x = 100.0;
+        bird.bird_box.y = 100.0;
+        let mut pipe: Pipe = Pipe::new();
+        pipe.upper_pipe.x = 100.0;
+        pipe.upper_pipe.y = 60.0;
+        assert_eq!(pipe.intersects(&bird.bird_box), true);
+    }
+    
+    // Should have certain pipes at time x
+    #[test]
+    fn test_count_pipes() {
+        let mut pipe_manager: PipeManager = PipeManager::new();
+        let mut time = 0;
+        pipe_manager.update(time);
+        assert_eq!(pipe_manager.pipes.len(), 0);
+
+        // New pipe added every 80 seconds
+        time = 80;
+        pipe_manager.update(time);
+        assert_eq!(pipe_manager.pipes.len(), 1);
+
+        // Should have the same number of pipes
+        time = 81;
+        pipe_manager.update(time);
+        assert_eq!(pipe_manager.pipes.len(), 1);
+
+        // New pipe should be created
+        time = 160;
+        pipe_manager.update(time);
+        assert_eq!(pipe_manager.pipes.len(), 2);
+    }
 
     #[test]
-    fn bird_no_jump() {
-        let mut bird: Bird = Bird::new();
-        let mut time: i32 = 0;
-
-        while !bird.dead {
-            bird.update();
-            time += 1;
+    fn test_no_jump() {
+        let mut rusty_bird: RustyBird = RustyBird::new();
+        rusty_bird.play_game();
+        while rusty_bird.get_game_state() == GameState::Playing {
+            rusty_bird.update();
         }
-        assert_eq!(time, 58);
+        assert_eq!(rusty_bird.get_game_state(), GameState::Over);
     }
 
     #[test]
     fn test_only_jump() {
-        let mut bird: Bird = Bird::new();
-        // ferris.update();
-        // println!("After 1 update: {:#?}", ferris);
-        // ferris.update();
-        // println!("After 2 update: {:#?}", ferris);
-        // ferris.jump();
-        // println!("After 1 jump: {:#?}", ferris);
-        // ferris.update();
-        // println!("After 3 update: {:#?}", ferris);    
-
-        for i in 0..20 {
-            bird.update();
-            if i % 10 == 0 {
-                bird.jump();
-            }
+        let mut rusty_bird: RustyBird = RustyBird::new();
+        rusty_bird.play_game();
+        while rusty_bird.get_game_state() == GameState::Playing {
+            rusty_bird.bird.jump();
+            rusty_bird.update();
         }
+        assert_eq!(rusty_bird.get_game_state(), GameState::Over);
     }
 }
